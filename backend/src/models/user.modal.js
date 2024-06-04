@@ -1,4 +1,6 @@
 import mongoose, {Schema} from "mongoose"
+import jwt from "jsonwebtoken";
+import bycrypt from "bcrypt"
 
 const userSchema = new Schema(
     {
@@ -17,7 +19,7 @@ const userSchema = new Schema(
             lowercase: true,
             trim: true,
         },
-        fullname: {
+        fullName: {
             type: String,
             require: true,
             trim: true,
@@ -45,5 +47,59 @@ const userSchema = new Schema(
         timestamps: true
     }
 )
+
+// pre is a Mongoose's Hook  xyz.pre("save", function)  here save is an event.
+// don't use arrow function inside pre hook because arrow function don't
+//   have refrence of this that's why use normal function.
+
+userSchema.pre("save", function(next){
+    this.password = bycrypt.hash(this.password,10)
+    next()
+})
+
+userSchema.methods.isPasswordCorrect = async function(password){
+    return bycrypt.compare(password, this.password)
+}
+
+userSchema.methods.createAccecessToken = function(){
+    return jwt.sign({
+        _id: this.id,
+        email: this.email,
+        username: this.username,
+        fullName: this.fullName
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+        expiresIn: ACCESS_TOKEN_EXPIRY
+    }
+)
+}
+
+userSchema.methods.createAccecessToken = function(){
+    return jwt.sign({
+        _id: this.id,
+        email: this.email,
+        username: this.username,
+        fullName: this.fullName
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+        expiresIn: ACCESS_TOKEN_EXPIRY
+    }
+)
+}
+
+userSchema.methods.createRefreshToken = function(){
+    return jwt.sign({
+        _id: this.id,
+       
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+        expiresIn: REFRESH_TOKEN_EXPIRY
+    }
+)
+}
+
 
 export const User = mongoose.model("User", userSchema)
