@@ -28,7 +28,7 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(404, "All fields are required")
     }
 
-   const existedUser =  User.findOne({
+   const existedUser = await User.findOne({
         $or: [{email},{username}]
     })
     console.log("existedUser -" , existedUser);
@@ -37,8 +37,19 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(409, "User already exists")
     }
 
+    // if avatar is compulsory we can check path like this also we can check with if else
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    console.log(req.files);
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // there is another way because we don't requird coverImage compulsory so i- 
+    // want if there is no coverImage from frontend it will take empty string 
+
+    let coverImageLocalPath;
+    if(req.files && req.files.coverImage && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+
+
 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avtar image is required")
