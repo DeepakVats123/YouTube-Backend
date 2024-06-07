@@ -52,13 +52,13 @@ const userSchema = new Schema(
 // don't use arrow function inside pre hook because arrow function don't
 //   have refrence of this that's why use normal function.
 
-userSchema.pre("save", function(next){
-    this.password = bycrypt.hash(this.password,10)
+userSchema.pre("save", async function(next){
+    this.password = await bycrypt.hash(this.password,10)
     next()
 })
 
 userSchema.methods.isPasswordCorrect = async function(password){
-    return bycrypt.compare(password, this.password)
+    return await bycrypt.compare(password, this.password)
 }
 
 userSchema.methods.createAccecessToken = function(){
