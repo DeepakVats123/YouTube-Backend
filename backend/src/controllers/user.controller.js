@@ -1,8 +1,26 @@
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {User} from "../models/user.modal.js"
-import {uploadOnCloudinary} from "../utils/Cloudinary.js"
+import { User } from "../models/user.modal.js";
+import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+
+// saprately creating for reuse 
+const genrateAccessAndRefreshToken = async (userID) => {
+    try {
+         const user = await User.findById(userID)
+         const accessToken = await user.createAccessToken()
+         const refreshToken = await user.createRefreshToken()
+
+         user.refreshToken = refreshToken
+         user.save({validateBeforeSave: false})
+
+         return {accessToken, refreshToken}
+
+    } catch (error) {
+       throw new ApiError(500, "something went wrong while genrating Access & Refresh token") 
+    }
+
+}
 
 const registerUser = asyncHandler( async (req, res) => {
     // get user details from frontend
@@ -22,7 +40,7 @@ const registerUser = asyncHandler( async (req, res) => {
     // }  
     // we can check conditions with if eles or we can use [some] method
 
-    if([email, username, fullName, password].some((item)=>{
+    if([email, username, fullName, password].some((item) => {
         item?.trim() == ""
     })){
         throw new ApiError(404, "All fields are required")
@@ -85,4 +103,72 @@ const registerUser = asyncHandler( async (req, res) => {
     )
 })
 
-export {registerUser}
+const loginUser = asyncHandler( async (req, res) => {
+    // take data from req body 
+    // find username or email or both 
+    // check the password 
+    // create access & refersh token
+    // send the cookie
+
+    const {username, email, password} = req.body
+
+    if(!(username || email)){
+        throw new ApiError(401, "Username or email is required")
+    }
+    const user = User.findOne({
+        $or: [{username}, {email}]
+    })
+    
+    if(!user){
+        throw new ApiError(404, "User doesn't exiest")
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if(!isPasswordValid){
+        throw new ApiError(404, "Invalid user password")
+    }
+
+    const {accessToken, refreshToken} = await genrateAccessAndRefreshToken(user._id)
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = { httpOnly: true, secure: true }
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshCookie", refreshToken, options)
+    .json(
+        new ApiResponse(200,
+            {
+                user: loggedInUser, refreshToken, accessToken
+            },
+            "User logged in successfully"
+        )
+    )
+})
+
+const logOutUser = asyncHandler( async (req, res) => {
+    // here we don't have any data from body that's why we need to create auth middleware
+    User.findByIdAndUpdate(
+       await req.user._id,
+        {
+            $set : {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = { httpOnly: true, secure: true }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken")
+    .clearCookie("refreshToken")
+    .json(new ApiResponse(200,{},"User logged Out"))
+})
+export {registerUser, loginUser, logOutUser}
