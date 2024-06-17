@@ -6,7 +6,8 @@ import { User } from "../models/user.modal.js";
 export const verifyJWT = asyncHandler(async (req, res, next) => {
     // trying to find accessToken from cookie or header 
    try {
-     const Token = req.cookie?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+     const Token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+     console.log("Token-",Token);
  
      if(!Token){
          throw new ApiError(401, "Unauthorized request")
@@ -16,7 +17,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
      // help of jwt, because we need to decode the token with the help of 
      // accessToken- secret
  
-     const decodeToken = jwt.verify(Token, process.env.ACCESS_TOKEN_SECRET)
+     const decodeToken = await jwt.verify(Token, process.env.ACCESS_TOKEN_SECRET)
  
      const user = await User.findById(decodeToken?._id).select("-passsword -refreshToken")
      if(!user){

@@ -53,6 +53,7 @@ const userSchema = new Schema(
 //   have refrence of this that's why use normal function.
 
 userSchema.pre("save", async function(next){
+    if(!this.isModified("password")) return next()
     this.password = await bycrypt.hash(this.password,10)
     next()
 })
@@ -65,26 +66,26 @@ userSchema.methods.isPasswordCorrect = async function(password){
 
 userSchema.methods.createAccessToken = function(){
     return jwt.sign({
-        _id: this.id,
+        _id: this._id,
         email: this.email,
         username: this.username,
         fullName: this.fullName
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-        expiresIn: ACCESS_TOKEN_EXPIRY
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRY
     }
 )
 }
 
 userSchema.methods.createRefreshToken = function(){
     return jwt.sign({
-        _id: this.id,
+        _id: this._id,
        
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
-        expiresIn: REFRESH_TOKEN_EXPIRY
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRY
     }
 )
 }
